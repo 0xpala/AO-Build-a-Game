@@ -140,3 +140,19 @@ end
 -- Initialize the game
 initialize()
 startWaiting()
+
+-- Adding the new command to start the waiting phase
+Handlers.add(
+    "StartWaiting",
+    function(msg)
+        if GameStatus == "Not-Started" then
+            startWaiting()
+        else
+            Send({
+                Target = msg.From,
+                Action = "GameMessage",
+                Data = "Cannot start waiting phase, game is already in progress."
+            })
+        end
+    end
+)
