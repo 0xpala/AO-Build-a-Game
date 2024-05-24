@@ -1,19 +1,17 @@
--- To connect to the game
+-- Connect to the game
 local GameTarget = "7WTand2sxu1x_9bepuWfeJNmQLA0dx88CkRnwJpKkDU"
 
--- To join the game
+-- Join the game
 Send({ Target = GameTarget, Action = "JoinGame" })
 
--- Pac-Man's initial position
+-- Pac-Man's starting position
 local pacman = { x = 5, y = 5 }
 
 -- Movement direction and speed
 local direction = "right"
-local initialSpeed = 0.5 -- Initial speed (number of squares moved per second)
-local speedIncreaseRate = 0.05 -- Rate at which speed increases after each pellet eaten
-local speed = initialSpeed -- Speed starts at the initial speed
+local speed = 0.5 -- Number of squares moved per second
 
--- Game area size
+-- Game area dimensions
 local width = 20
 local height = 20
 
@@ -47,19 +45,18 @@ local function changeDirection(newDirection)
     end
 end
 
--- Function to check collision with pellets
+-- Function to check for pellet collisions
 local function checkPelletCollision()
     for i, pellet in ipairs(pellets) do
         if pacman.x == pellet.x and pacman.y == pellet.y then
-            table.remove(pellets, i) -- Remove the pellet from the list
-            score = score + 10 -- Increase the score
-            speed = speed + (speed * speedIncreaseRate) -- Increase speed
+            table.remove(pellets, i) -- Remove pellet from the list
+            score = score + 10 -- Increase score
             break
         end
     end
 end
 
--- Function to check collision with traps
+-- Function to check for trap collisions
 local function checkTrapCollision()
     for _, trap in ipairs(traps) do
         if pacman.x == trap.x and pacman.y == trap.y then
@@ -67,6 +64,12 @@ local function checkTrapCollision()
             os.exit() -- Exit the game
         end
     end
+end
+
+-- Sleep function using socket library
+local socket = require("socket")
+local function sleep(sec)
+    socket.sleep(sec)
 end
 
 -- Game loop
@@ -83,20 +86,20 @@ local function gameLoop()
             pacman.y = pacman.y + 1
         end
 
-        -- Check collision with pellets
+        -- Check for pellet collisions
         checkPelletCollision()
 
-        -- Check collision with traps
+        -- Check for trap collisions
         checkTrapCollision()
 
-        -- Check if Pac-Man hits the boundaries
+        -- Check if Pac-Man hits the boundaries of the game area
         if pacman.x < 1 or pacman.x > width or pacman.y < 1 or pacman.y > height then
             print("Game Over! Score:", score)
             break
         end
 
-        -- Set Pac-Man's speed
-        os.sleep(1 / speed) -- Add sleep to make Pac-Man move a certain number of steps per second
+        -- Adjust Pac-Man's speed
+        sleep(1 / speed) -- Add sleep to make Pac-Man move at a specific rate
     end
 end
 
