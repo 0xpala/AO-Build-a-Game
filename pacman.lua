@@ -1,11 +1,36 @@
+-- Define a custom random function to replace math.random
+function customRandom(m, n)
+    return math.floor(math.random() * (n - m + 1) + m)
+end
+
 -- Connect to the game
 local GameTarget = "7WTand2sxu1x_9bepuWfeJNmQLA0dx88CkRnwJpKkDU"
 
 -- Join the game
-Send({ Target = GameTarget, Action = "JoinGame" })
+Send({ ["Target"] = GameTarget, ["Action"] = "JoinGame" })
+
+-- Total number of players who have joined the game
+local playerCount = 0
+
+-- Function to increment the player count and send an update
+local function incrementPlayerCount()
+    playerCount = playerCount + 1
+    Send({ ["Target"] = GameTarget, ["Action"] = "PlayerCountUpdate", ["PlayerCount"] = playerCount })
+end
+
+-- Increment player count when a player joins the game
+incrementPlayerCount()
+
+-- Function to send a welcome message and inform players about the new player
+local function sendWelcomeMessage()
+    Send({ ["Target"] = GameTarget, ["Action"] = "WelcomeMessage", ["Message"] = "Welcome to the game! A new player has joined." })
+end
+
+-- Send a welcome message when a player joins the game
+sendWelcomeMessage()
 
 -- Pac-Man's starting position
-local pacman = { x = 5, y = 5 }
+local pacman = { ["x"] = 5, ["y"] = 5 }
 
 -- Movement direction and speed
 local direction = "right"
@@ -17,16 +42,16 @@ local height = 20
 
 -- Pellet positions
 local pellets = {
-    { x = 8, y = 3 },
-    { x = 10, y = 8 },
-    { x = 15, y = 15 }
+    { ["x"] = 8, ["y"] = 3 },
+    { ["x"] = 10, ["y"] = 8 },
+    { ["x"] = 15, ["y"] = 15 }
 }
 
 -- Trap positions
 local traps = {
-    { x = 3, y = 10 },
-    { x = 7, y = 17 },
-    { x = 12, y = 5 }
+    { ["x"] = 3, ["y"] = 10 },
+    { ["x"] = 7, ["y"] = 17 },
+    { ["x"] = 12, ["y"] = 5 }
 }
 
 -- Score
@@ -34,56 +59,49 @@ local score = 0
 
 -- Function to change Pac-Man's movement direction
 local function changeDirection(newDirection)
-    if newDirection == "up" and direction ~= "down" then
-        direction = "up"
-    elseif newDirection == "down" and direction ~= "up" then
-        direction = "down"
-    elseif newDirection == "left" and direction ~= "right" then
-        direction = "left"
-    elseif newDirection == "right" and direction ~= "left" then
-        direction = "right"
-    end
+    Send({ ["Target"] = GameTarget, ["Action"] = "ChangeDirection", ["Direction"] = newDirection })
 end
 
 -- Function to check for pellet collisions
 local function checkPelletCollision()
-    for i, pellet in ipairs(pellets) do
-        if pacman.x == pellet.x and pacman.y == pellet.y then
-            table.remove(pellets, i) -- Remove pellet from the list
-            score = score + 10 -- Increase score
-            break
-        end
-    end
+    -- No command to check pellet collision, so no action will be taken
 end
 
 -- Function to check for trap collisions
 local function checkTrapCollision()
-    for _, trap in ipairs(traps) do
-        if pacman.x == trap.x and pacman.y == trap.y then
-            print("Trap! Game Over! Score:", score)
-            os.exit() -- Exit the game
-        end
-    end
+    -- No command to check trap collision, so no action will be taken
 end
 
--- Function to simulate a delay
-local function sleep(seconds)
-    local start = os.clock()
-    while os.clock() - start < seconds do end
+-- Function to send the "Ready to start" command after the game has started
+local function sendReadyToStart()
+    Send({ ["Target"] = GameTarget, ["Action"] = "ReadyToStart", ["Message"] = "Ready to start" })
 end
 
 -- Game loop
 local function gameLoop()
+    -- Start the game
+    Send({ ["Target"] = GameTarget, ["Action"] = "GoGoGo" })
+
+    -- Send the "Ready to start" command
+    sendReadyToStart()
+
+    local startTime = os.time()
+    local elapsedTime = 0
+
     while true do
+        -- Calculate elapsed time
+        local currentTime = os.time()
+        elapsedTime = currentTime - startTime
+
         -- Pac-Man's movement
         if direction == "right" then
-            pacman.x = pacman.x + 1
+            Send({ ["Target"] = GameTarget, ["Action"] = "MoveRight" })
         elseif direction == "left" then
-            pacman.x = pacman.x - 1
+            Send({ ["Target"] = GameTarget, ["Action"] = "MoveLeft" })
         elseif direction == "up" then
-            pacman.y = pacman.y - 1
+            Send({ ["Target"] = GameTarget, ["Action"] = "MoveUp" })
         elseif direction == "down" then
-            pacman.y = pacman.y + 1
+            Send({ ["Target"] = GameTarget, ["Action"] = "MoveDown" })
         end
 
         -- Check for pellet collisions
@@ -93,15 +111,18 @@ local function gameLoop()
         checkTrapCollision()
 
         -- Check if Pac-Man hits the boundaries of the game area
-        if pacman.x < 1 or pacman.x > width or pacman.y < 1 or pacman.y > height then
+        if pacman["x"] < 1 or pacman["x"] > width or pacman["y"] < 1 or pacman["y"] > height then
             print("Game Over! Score:", score)
             break
         end
 
         -- Adjust Pac-Man's speed
-        sleep(1 / speed) -- Add sleep to make Pac-Man move at a specific rate
+        local remainingTime = (1 / speed) - elapsedTime
+        if remainingTime > 0 then
+            os.execute("sleep " .. remainingTime)
+        end
     end
 end
 
--- Start the game
-Send({ Target = GameTarget, Action = "GoGoGo" })
+-- Start the game loop
+gameLoop()
