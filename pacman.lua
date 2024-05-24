@@ -1,158 +1,104 @@
--- Pacman Game
--- Importing essential modules
-local json = require("json")
+-- To connect to the game
+local GameTarget = "7WTand2sxu1x_9bepuWfeJNmQLA0dx88CkRnwJpKkDU"
 
--- Global Variables and Setup
-GameStatus = "Not-Started"
-WaitDuration = 150000 -- 2.5 minutes in milliseconds
-GameDuration = 900000 -- 15 minutes in milliseconds
-CurrentTime = 0 -- This will be updated with the actual time
+-- To join the game
+Send({ Target = GameTarget, Action = "JoinGame" })
 
-CurrencyToken = "PAC"  -- Currency used in the game
-DepositAmount = 2  -- Amount of PAC coins required for participation
-MinimumPlayers = 3
+-- Pac-Man's initial position
+local pacman = { x = 5, y = 5 }
 
-PlayersData = {}
-WaitingList = {}
+-- Movement direction and speed
+local direction = "right"
+local initialSpeed = 0.5 -- Initial speed (number of squares moved per second)
+local speedIncreaseRate = 0.05 -- Rate at which speed increases after each pellet eaten
+local speed = initialSpeed -- Speed starts at the initial speed
 
--- Function to roll a dice
-function rollDice()
-    return math.random(1, 6)
-end
+-- Game area size
+local width = 20
+local height = 20
 
-function initialize()
-    GameStatus = "Not-Started"
-    PlayersData = {}
-    WaitingList = {}
-end
+-- Pellet positions
+local pellets = {
+    { x = 8, y = 3 },
+    { x = 10, y = 8 },
+    { x = 15, y = 15 }
+}
 
-function startWaiting()
-    GameStatus = "Waiting"
-    CurrentTime = os.time() * 1000 -- Update current time in milliseconds
-    print("The game is starting soon! Please deposit " .. DepositAmount .. " " .. CurrencyToken .. " to join.")
-end
+-- Trap positions
+local traps = {
+    { x = 3, y = 10 },
+    { x = 7, y = 17 },
+    { x = 12, y = 5 }
+}
 
-function checkStart()
-    if #WaitingList >= MinimumPlayers then
-        commenceGame()
-    else
-        print("Insufficient players! Waiting for more...")
+-- Score
+local score = 0
+
+-- Function to change Pac-Man's movement direction
+local function changeDirection(newDirection)
+    if newDirection == "up" and direction ~= "down" then
+        direction = "up"
+    elseif newDirection == "down" and direction ~= "up" then
+        direction = "down"
+    elseif newDirection == "left" and direction ~= "right" then
+        direction = "left"
+    elseif newDirection == "right" and direction ~= "left" then
+        direction = "right"
     end
 end
 
-function commenceGame()
-    GameStatus = "Playing"
-    CurrentTime = os.time() * 1000 -- Update current time in milliseconds
-    for playerId, _ in pairs(WaitingList) do
-        PlayersData[playerId] = {position = 1, score = 0}
-        WaitingList[playerId] = nil -- Remove player from waiting list
-    end
-    print("Game has started. Best of luck to all participants!")
-end
-
--- Function for player movement based on dice roll
-function move(playerId)
-    local player = PlayersData[playerId]
-    if not player then
-        print("Player not found.")
-        return
-    end
-
-    local diceRoll = rollDice()
-    print("Player " .. playerId .. " rolled a " .. diceRoll)
-
-    -- Check for a 6 on the dice
-    if diceRoll == 6 then
-        print("Player " .. playerId .. " rolled a 6 and gets another turn!")
-        move(playerId)  -- Recursive call for another turn
-        return
-    end
-
-    -- Move the player
-    local newPosition = player.position + diceRoll
-    player.position = newPosition
-
-    -- Check if the player reached the final position
-    if newPosition >= 100 then
-        endRound(playerId)
-    end
-end
-
-function checkEnd()
-    if GameStatus ~= "Playing" then return end
-
-    local currentTime = os.time() * 1000
-    if currentTime >= (CurrentTime + GameDuration) then
-        endRound(nil)  -- Game over due to time expiration
-    end
-end
-
-function endRound(winnerId)
-    print("Game Over")
-
-    -- Calculate and distribute rewards
-    local totalCoins = 0
-    for playerId, player in pairs(PlayersData) do
-        totalCoins = totalCoins + DepositAmount  -- Add deposited coins by each player
-        if playerId == winnerId then
-            distributeReward(winnerId, totalCoins, "Winning the game")
+-- Function to check collision with pellets
+local function checkPelletCollision()
+    for i, pellet in ipairs(pellets) do
+        if pacman.x == pellet.x and pacman.y == pellet.y then
+            table.remove(pellets, i) -- Remove the pellet from the list
+            score = score + 10 -- Increase the score
+            speed = speed + (speed * speedIncreaseRate) -- Increase speed
+            break
         end
     end
-
-    initialize() -- Restart the game
 end
 
--- Function to distribute rewards to a player.
--- @param recipient: The player receiving the reward.
--- @param qty: The quantity of the reward.
--- @param reason: The reason for the reward.
-function distributeReward(recipient, qty, reason)
-    -- Implement reward distribution logic here
-    print("Rewarding player " .. recipient .. ": " .. qty .. " " .. CurrencyToken .. " for " .. reason)
-end
-
--- Player registration and payment handling
-function enrollPlayer(playerId)
-    if GameStatus ~= "Waiting" then
-        print("Cannot enroll player, game is not in waiting mode.")
-        return
-    end
-
-    WaitingList[playerId] = true
-    print("Player " .. playerId .. " has been enrolled in the game.")
-end
-
-function withdrawPlayer(playerId)
-    if GameStatus ~= "Waiting" then
-        print("Cannot withdraw player, game is not in waiting mode.")
-        return
-    end
-
-    WaitingList[playerId] = nil
-    print("Player " .. playerId .. " has been withdrawn from the game.")
-end
-
--- Main game loop
-function gameLoop()
-    checkEnd()
-end
-
--- Initialize the game
-initialize()
-startWaiting()
-
--- Adding the new command to start the waiting phase
-Handlers.add(
-    "StartWaiting",
-    function(msg)
-        if GameStatus == "Not-Started" then
-            startWaiting()
-        else
-            Send({
-                Target = msg.From,
-                Action = "GameMessage",
-                Data = "Cannot start waiting phase, game is already in progress."
-            })
+-- Function to check collision with traps
+local function checkTrapCollision()
+    for _, trap in ipairs(traps) do
+        if pacman.x == trap.x and pacman.y == trap.y then
+            print("Trap! Game Over! Score:", score)
+            os.exit() -- Exit the game
         end
     end
-)
+end
+
+-- Game loop
+local function gameLoop()
+    while true do
+        -- Pac-Man's movement
+        if direction == "right" then
+            pacman.x = pacman.x + 1
+        elseif direction == "left" then
+            pacman.x = pacman.x - 1
+        elseif direction == "up" then
+            pacman.y = pacman.y - 1
+        elseif direction == "down" then
+            pacman.y = pacman.y + 1
+        end
+
+        -- Check collision with pellets
+        checkPelletCollision()
+
+        -- Check collision with traps
+        checkTrapCollision()
+
+        -- Check if Pac-Man hits the boundaries
+        if pacman.x < 1 or pacman.x > width or pacman.y < 1 or pacman.y > height then
+            print("Game Over! Score:", score)
+            break
+        end
+
+        -- Set Pac-Man's speed
+        os.sleep(1 / speed) -- Add sleep to make Pac-Man move a certain number of steps per second
+    end
+end
+
+-- Start the game
+Send({ Target = GameTarget, Action = "GoGoGo" })
