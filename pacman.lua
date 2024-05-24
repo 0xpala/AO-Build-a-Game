@@ -66,10 +66,10 @@ local function checkTrapCollision()
     end
 end
 
--- Sleep function using socket library
-local socket = require("socket")
-local function sleep(sec)
-    socket.sleep(sec)
+-- Function to simulate a delay
+local function sleep(seconds)
+    local start = os.clock()
+    while os.clock() - start < seconds do end
 end
 
 -- Game loop
