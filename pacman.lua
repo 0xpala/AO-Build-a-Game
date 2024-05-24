@@ -15,7 +15,7 @@ local playerCount = 0
 -- Function to increment the player count and send an update
 local function incrementPlayerCount()
     playerCount = playerCount + 1
-    Send({ ["Target"] = GameTarget, ["Action"] = "PlayerCountUpdate", ["PlayerCount"] = playerCount })
+  
 end
 
 -- Increment player count when a player joins the game
