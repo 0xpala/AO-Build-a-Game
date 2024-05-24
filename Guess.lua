@@ -2,7 +2,7 @@
 local GuessName = "0xpala"   -- Your Name
 local stepNumber = 1 -- Initial Guess Step
 local stopNumber = 9 -- Stop Guess Number
-local runStatus = 'disable'
+local runStatus = 'enable'
 local currnetNumber = 0
 local Guess = '7WTand2sxu1x_9bepuWfeJNmQLA0dx88CkRnwJpKkDU'
 local lock = false
